@@ -380,3 +380,39 @@
 {"event": "agent_text", "text": "M7 complete. Added 5 IT-7 cross-tenant isolation tests covering every endpoint with opaque body verification, confirmed IT-10 (no-tools) passes from M3. 36 tests pass, ruff clean. Next turn: M8 (E2E test + operator README)."}
 {"event": "context_usage", "fill_pct": 58.0}
 {"event": "agent_turn_end", "writes": 4, "tool_count": 12}
+{"event": "pilot_start", "turn": 7, "phase": "BUILD"}
+{"event": "pilot_review", "turn": 7, "decision": "GO", "direction": "Drive M8: E2E test + operator README. Write tests/e2e/test_full.py (C22) covering all six \"Done\" criteria from vision.md: two tenants \u00d7 two conversations \u00d7 real Bedrock pi exchanges with incremental streaming asserted (>1 text_delta before done), backend-restart history survival, exhaustive cross-tenant rejection on all endpoints both directions, and a get_state no-tools check. Then write README.md with prerequisites (Python 3.11+, Node 22+, pi 1.0.2, AWS credentials), setup steps, make dev / make test / make e2e, the auth-seam replacement note, and the agent-tools extension point. Finish with the final validation pass: make e2e green against real Bedrock, uv run ruff check . clean, npm run build + npm run lint + npm run test clean. Flip M8 to [x] only after make e2e passes, and record the dated Outcome in progress.md.", "gate_held": false}
+{"event": "turn_end", "turn": 7, "phase": "BUILD", "decision": "GO", "direction": "Drive M8: E2E test + operator README. Write tests/e2e/test_full.py (C22) covering all six \"Done\" criteria from vision.md: two tenants \u00d7 two conversations \u00d7 real Bedrock pi exchanges with incremental streaming asserted (>1 text_delta before done), backend-restart history survival, exhaustive cross-tenant rejection on all endpoints both directions, and a get_state no-tools check. Then write README.md with prerequisites (Python 3.11+, Node 22+, pi 1.0.2, AWS credentials), setup steps, make dev / make test / make e2e, the auth-seam replacement note, and the agent-tools extension point. Finish with the final validation pass: make e2e green against real Bedrock, uv run ruff check . clean, npm run build + npm run lint + npm run test clean. Flip M8 to [x] only after make e2e passes, and record the dated Outcome in progress.md.", "gate_held": false, "max_turns": 100, "elapsed": 124.56597941499786, "writes": 4, "cost_usd": 0.7824, "total_cost_usd": 11.7134, "usage": {"input_tokens": 13, "output_tokens": 4348, "cache_read_input_tokens": 1232760, "cache_creation_input_tokens": 9163}, "milestones_done": 7, "milestones_total": 8}
+{"event": "turn_start", "turn": 8, "phase": "BUILD"}
+{"event": "agent_text", "text": "Starting M8. Let me read the current state and the vision.md for the exact \"Done\" criteria."}
+{"event": "tool_use", "detail": "Read(goal.md)"}
+{"event": "tool_use", "detail": "Read(vision.md)"}
+{"event": "tool_use", "detail": "Read(loop-docs/progress.md)"}
+{"event": "agent_thinking", "text": "Now let me understand what I need to build for M8:\n\n1. **`tests/e2e/test_full.py`** \u2014 The complete \"Done\" gate with 6 criteria:\n   - Two tenants (tenant-a, tenant-b), each with a user\n   - Each user creates two conversations, exchanges several messages with real Bedrock\n   - Streamed replies incremental (>1 text_delta before done)\n   - History survives backend restart\n   - Cross-tenant access refused on all endpoints, both directions\n   - Agent has no file/shell tools\n\n2. **`README.md`** \u2014 Operator docs\n3. **Final validation pass** \u2014 Running the full test suite including the e2e tests, linting, and build checks across both backend and frontend\n\nLet me check the Makefile to see what the e2e target looks like and review the existing test structure."}
+{"event": "agent_text", "text": "Let me check the Makefile and existing e2e test directory structure."}
+{"event": "tool_use", "detail": "Read(Makefile)"}
+{"event": "tool_use", "detail": "Bash(ls -la /home/ubuntu/agent_dev/common_agent/src/backend/tests/e2e/ 2>/dev/null ||\u2026)"}
+{"event": "agent_text", "text": "Good. The e2e directory exists with `__init__.py`. Let me also check what SSE parsing helpers exist to reuse, and look at the existing test infrastructure."}
+{"event": "tool_use", "detail": "Read(src/backend/tests/conftest.py)"}
+{"event": "agent_text", "text": "I have all the context I need. Now writing the e2e test and README."}
+{"event": "tool_use", "detail": "Write(src/backend/tests/e2e/test_full.py)"}
+{"event": "agent_text", "text": "Now creating the README."}
+{"event": "tool_use", "detail": "Write(README.md)"}
+{"event": "agent_text", "text": "Now running the validation pass. First ruff, then `make e2e`."}
+{"event": "tool_use", "detail": "Bash(uv run ruff check . 2>&1)"}
+{"event": "agent_text", "text": "SIM117 (nested async with) \u2014 auto-fixing."}
+{"event": "tool_use", "detail": "Bash(uv run ruff check --fix . 2>&1)"}
+{"event": "tool_use", "detail": "Bash(uv run ruff check . 2>&1)"}
+{"event": "agent_text", "text": "Now running `make e2e` \u2014 this is the real gate."}
+{"event": "tool_use", "detail": "Bash(cd /home/ubuntu/agent_dev/common_agent && make e2e 2>&1)"}
+{"event": "agent_text", "text": "`make e2e` passes \u2014 1 test, all 6 Done criteria verified against real Bedrock in 13.83s. Now running the rest of the final validation pass."}
+{"event": "tool_use", "detail": "Bash(cd /home/ubuntu/agent_dev/common_agent/src/backend && uv run pytest -q 2>&1)"}
+{"event": "tool_use", "detail": "Bash(cd /home/ubuntu/agent_dev/common_agent/src/frontend && npm run build 2>&1)"}
+{"event": "tool_use", "detail": "Bash(npm run lint 2>&1 && npm run test 2>&1)"}
+{"event": "agent_text", "text": "All validation passes:\n- `make e2e` \u2192 1 passed (real Bedrock, all 6 Done criteria)\n- `uv run pytest -q` \u2192 37 passed (36 unit/integration + 1 e2e)\n- `uv run ruff check .` \u2192 All checks passed\n- `npm run build` \u2192 clean typecheck + bundle\n- `npm run lint` \u2192 clean\n- `npm run test` \u2192 4 passed\n\nNow flipping M8 and logging."}
+{"event": "tool_use", "detail": "Edit(goal.md)"}
+{"event": "tool_use", "detail": "Edit(goal.md)"}
+{"event": "tool_use", "detail": "Edit(loop-docs/progress.md)"}
+{"event": "agent_text", "text": "M8 complete. All 8 milestones are now `[x]` in goal.md. The BUILD phase is done:\n\n- **37 backend tests** pass (unit, integration, e2e \u2014 all hitting real Bedrock)\n- **4 frontend tests** pass (useStream hook)\n- **`make e2e`** green \u2014 the complete Done gate from vision.md verified against real Bedrock in 13.83s\n- All lint/type checks clean (`ruff`, `tsc`, `npm run lint`)\n- `README.md` written with prerequisites, setup, auth-seam replacement, and tools extension guidance\n\nThe run is ready for VERIFY."}
+{"event": "context_usage", "fill_pct": 67.0}
+{"event": "agent_turn_end", "writes": 5, "tool_count": 18}

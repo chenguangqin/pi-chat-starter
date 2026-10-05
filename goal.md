@@ -77,7 +77,7 @@ Build a web chat application with a Python backend (FastAPI) wrapping the **pi a
   - IT-10 assertion (if not already covered in M3): verify pi process reports no enabled tools
   - **Validation:** `uv run pytest -q` passes, every endpoint covered by cross-tenant test
 
-- [ ] **M8: E2E test + operator README**
+- [x] **M8: E2E test + operator README**
   - `tests/e2e/test_full.py` (C22): the complete "Done" gate from `vision.md`:
     1. Creates two tenants (tenant-a, tenant-b), each with a user
     2. Each user creates two conversations and exchanges several messages with real Bedrock pi
@@ -95,7 +95,7 @@ The ultimate gate is `make e2e` — a single command that runs the e2e test from
 
 ## Status
 
-M7 complete. Starting M8 next turn.
+M8 complete. All milestones checked. BUILD phase done — ready for VERIFY.
 
 ## Decisions
 
