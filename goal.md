@@ -62,7 +62,7 @@ Build a web chat application with a Python backend (FastAPI) wrapping the **pi a
   - Tests: IT-5 (send messages, kill pi process, send again, verify context-aware reply), IT-6 (send messages, recreate app instance with same DB, verify messages listed, send new message, verify pi reloads session)
   - **Validation:** `uv run pytest -q` passes, `uv run ruff check .` clean
 
-- [ ] **M6: Frontend chat UI**
+- [x] **M6: Frontend chat UI**
   - `App.tsx`: two-column layout (sidebar 280px + main), conforming to `design.md` tokens
   - `api.ts`: typed fetch wrappers for all endpoints (list/create/get/rename/delete conversations, list messages, send message)
   - `useStream.ts`: SSE hook using `fetch` + `ReadableStream`, accumulates text deltas, exposes state (idle/streaming/error), handles done and error events, supports abort via `AbortController`
@@ -95,7 +95,7 @@ The ultimate gate is `make e2e` — a single command that runs the e2e test from
 
 ## Status
 
-M5 complete. Starting M6 next turn.
+M6 complete. Starting M7 next turn.
 
 ## Decisions
 
