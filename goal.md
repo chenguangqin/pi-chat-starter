@@ -50,7 +50,7 @@ Build a web chat application with a Python backend (FastAPI) wrapping the **pi a
   - Tests: `test_pi_process.py` (IT-3: spawn pi, get_state, send prompt, receive events through agent_settled, verify >1 text_delta; IT-10: no tools enabled; plus: the cap yields 503, and the workdir is created under the tenant data root)
   - **Validation:** `uv run pytest -q` passes (tests hit real pi + real Bedrock), `uv run ruff check .` clean
 
-- [ ] **M4: Message send + streaming endpoint**
+- [x] **M4: Message send + streaming endpoint**
   - `sse.py`: SSE formatter — transforms pi events to `data: {...}\n\n` lines (text_delta, status, error, done)
   - `routes/messages.py`: `POST /api/conversations/{id}/messages` — saves user message to DB first, calls `ProcessManager.get_or_create`, checks `is_streaming` (409 if busy), sends prompt to pi, returns `StreamingResponse` with SSE content type, saves assistant message on `message_end`, aborts pi on client disconnect
   - Tests: `test_messages.py` (IT-4: send message, verify SSE stream has >1 text_delta chunk before done, verify user + assistant messages in DB; IT-8: client disconnect triggers abort)
@@ -95,7 +95,7 @@ The ultimate gate is `make e2e` — a single command that runs the e2e test from
 
 ## Status
 
-M3 complete. Starting M4 next turn.
+M4 complete. Starting M5 next turn.
 
 ## Decisions
 

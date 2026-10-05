@@ -10,6 +10,7 @@ from config import Settings
 from database import create_engine, create_session_factory, run_migrations
 from process_manager import ProcessManager
 from routes.conversations import router as conversations_router
+from routes.messages import router as messages_router
 
 
 @asynccontextmanager
@@ -43,6 +44,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.add_middleware(IdentityMiddleware)
     app.include_router(conversations_router)
+    app.include_router(messages_router)
 
     @app.get("/api/health")
     async def health():

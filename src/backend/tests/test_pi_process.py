@@ -69,7 +69,9 @@ async def test_it3_spawn_get_state_prompt_stream(tmp_path):
         assert state_resp["data"]["isStreaming"] is False
         assert state_resp["data"]["sessionFile"] is not None
 
-        prompt_resp = await proc.send_prompt("Reply with exactly three words: hello world test")
+        prompt_resp = await proc.send_prompt(
+            "List the numbers 1 through 20, each on its own line"
+        )
         assert prompt_resp.get("success") is True
 
         text_deltas = []
