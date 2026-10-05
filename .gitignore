@@ -10,3 +10,10 @@ build/
 .next/
 cdk.out/
 .DS_Store
+
+# Application runtime state — must never be committed (contains tenant data).
+src/backend/data/
+*.db
+*.db-wal
+*.db-shm
+tsconfig.tsbuildinfo
