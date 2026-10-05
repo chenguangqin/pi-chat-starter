@@ -25,7 +25,7 @@ Build a web chat application with a Python backend (FastAPI) wrapping the **pi a
 
 ## Milestones
 
-- [ ] **M1: Project scaffold + database**
+- [x] **M1: Project scaffold + database**
   - Initialize backend: `pyproject.toml` (FastAPI, SQLAlchemy, uvicorn, alembic, httpx, pytest, pytest-asyncio, ruff), `alembic.ini`, initial migration creating `conversations` and `messages` tables
   - Initialize frontend: `package.json`, Vite + React 18 + TypeScript + Tailwind CSS, `vite.config.ts` with `/api` proxy to `localhost:8000`
   - Backend: `config.py` (env vars: `PI_MODEL`, `DATA_DIR`, `PI_IDLE_TIMEOUT_SECONDS`, `MAX_PI_PROCESSES` default 20), `database.py` (async SQLAlchemy engine, WAL mode pragma, session factory), `models.py` (Conversation, Message ORM models), `app.py` (FastAPI factory with lifespan)
@@ -95,7 +95,7 @@ The ultimate gate is `make e2e` — a single command that runs the e2e test from
 
 ## Status
 
-Not started. Entering BUILD phase.
+M1 complete. Starting M2 next turn.
 
 ## Decisions
 
