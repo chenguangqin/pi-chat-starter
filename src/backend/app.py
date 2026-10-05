@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from auth import IdentityMiddleware
 from config import Settings
 from database import create_engine, create_session_factory, run_migrations
+from process_manager import ProcessManager
 from routes.conversations import router as conversations_router
 
 
@@ -23,8 +24,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.engine = engine
     app.state.session_factory = session_factory
 
+    process_manager = ProcessManager(settings, session_factory)
+    await process_manager.start()
+    app.state.process_manager = process_manager
+
     yield
 
+    await process_manager.shutdown_all()
     await engine.dispose()
 
 

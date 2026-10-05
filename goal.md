@@ -39,7 +39,7 @@ Build a web chat application with a Python backend (FastAPI) wrapping the **pi a
   - Tests: `test_auth.py` (IT-1: missing headers → 401, valid headers → identity set), `test_conversations.py` (IT-2: CRUD works, cross-tenant access → 404)
   - **Validation:** `uv run pytest -q` passes, `uv run ruff check .` clean
 
-- [ ] **M3: Pi process lifecycle**
+- [x] **M3: Pi process lifecycle**
   - `pi_process.py`: `PiProcess` class — async subprocess via `asyncio.create_subprocess_exec`, JSONL framing (split on `b"\n"` only), named methods only (`send_prompt`, `send_get_state`, `abort`, `shutdown`), state tracking (starting/ready/streaming/idle/dead), stdout reader coroutine with per-line error handling, `is_streaming` flag
   - `process_manager.py`: `ProcessManager` — maps `conversation_id → PiProcess`, `get_or_create(conversation)` that spawns with correct flags (`--mode rpc --no-tools --no-context-files --provider amazon-bedrock --model $PI_MODEL --session-dir <tenant_dir>`), saves `pi_session_path` from `get_state` to conversation record, re-spawns with `--session <saved_path>`, idle timeout cleanup task, `shutdown_all()`
   - `ProcessManager` spawns each process with **cwd `<DATA_DIR>/tenants/<tid>/workdirs/<cid>/`**, created on demand (idempotent) and removed when the conversation is deleted — NOT `/tmp` (see `architecture.md` → Reviewer Decisions)
@@ -95,7 +95,7 @@ The ultimate gate is `make e2e` — a single command that runs the e2e test from
 
 ## Status
 
-M2 complete. Starting M3 next turn.
+M3 complete. Starting M4 next turn.
 
 ## Decisions
 
