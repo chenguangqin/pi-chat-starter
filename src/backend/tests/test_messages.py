@@ -92,6 +92,133 @@ async def test_send_message_no_auth_401(client):
 
 
 @pytest.mark.asyncio
+async def test_it5_session_survives_process_kill(app):
+    """IT-5: send message with distinctive info, kill pi process, send again —
+    pi reloads session via --session flag and reply is context-aware."""
+    from httpx import ASGITransport, AsyncClient
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        create_resp = await client.post("/api/conversations", headers=HEADERS)
+        assert create_resp.status_code == 201
+        cid = create_resp.json()["id"]
+
+        resp1 = await client.post(
+            f"/api/conversations/{cid}/messages",
+            headers=HEADERS,
+            json={
+                "content": (
+                    "Remember this exactly: the secret code is PINEAPPLE-42. "
+                    "Acknowledge by repeating the code back to me."
+                )
+            },
+        )
+        assert resp1.status_code == 200
+        events1 = _parse_sse_events(resp1.text)
+        done1 = [e for e in events1 if e.get("type") == "done"]
+        assert len(done1) == 1
+
+    pm = app.state.process_manager
+    proc = pm._processes.get(cid)
+    assert proc is not None
+    await proc.shutdown()
+    assert not proc.is_alive
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        resp2 = await client.post(
+            f"/api/conversations/{cid}/messages",
+            headers=HEADERS,
+            json={
+                "content": (
+                    "What is the secret code I told you earlier? "
+                    "Reply with just the code, nothing else."
+                )
+            },
+        )
+        assert resp2.status_code == 200
+        events2 = _parse_sse_events(resp2.text)
+        text_deltas = [e for e in events2 if e.get("type") == "text_delta"]
+        full_text = "".join(e["delta"] for e in text_deltas)
+        assert "pineapple" in full_text.lower(), (
+            f"Expected context-aware reply mentioning pineapple, got: {full_text[:200]}"
+        )
+        done2 = [e for e in events2 if e.get("type") == "done"]
+        assert len(done2) == 1
+
+
+@pytest.mark.asyncio
+async def test_it6_messages_survive_restart(settings):
+    """IT-6: send messages, recreate app with same DB, verify messages listed,
+    send new message — pi reloads session and reply is context-aware."""
+    from httpx import ASGITransport, AsyncClient
+
+    from app import create_app
+
+    # --- App instance 1 ---
+    app1 = create_app(settings)
+    async with app1.router.lifespan_context(app1), AsyncClient(
+        transport=ASGITransport(app=app1), base_url="http://test"
+    ) as client:
+        create_resp = await client.post("/api/conversations", headers=HEADERS)
+        assert create_resp.status_code == 201
+        cid = create_resp.json()["id"]
+
+        resp = await client.post(
+            f"/api/conversations/{cid}/messages",
+            headers=HEADERS,
+            json={
+                "content": (
+                    "Remember this: my favorite color is TURQUOISE. "
+                    "Confirm by repeating the color back to me."
+                )
+            },
+        )
+        assert resp.status_code == 200
+        events = _parse_sse_events(resp.text)
+        done = [e for e in events if e.get("type") == "done"]
+        assert len(done) == 1
+
+    # App1 fully shut down (lifespan exited, engine disposed, processes killed)
+
+    # --- App instance 2 (same DB) ---
+    app2 = create_app(settings)
+    async with app2.router.lifespan_context(app2), AsyncClient(
+        transport=ASGITransport(app=app2), base_url="http://test"
+    ) as client:
+        msgs_resp = await client.get(
+            f"/api/conversations/{cid}/messages", headers=HEADERS
+        )
+        assert msgs_resp.status_code == 200
+        messages = msgs_resp.json()
+        assert len(messages) == 2
+        assert messages[0]["role"] == "user"
+        assert messages[1]["role"] == "assistant"
+
+        resp2 = await client.post(
+            f"/api/conversations/{cid}/messages",
+            headers=HEADERS,
+            json={
+                "content": (
+                    "What is my favorite color that I told you? "
+                    "Reply with just the color, nothing else."
+                )
+            },
+        )
+        assert resp2.status_code == 200
+        events2 = _parse_sse_events(resp2.text)
+        text_deltas = [e for e in events2 if e.get("type") == "text_delta"]
+        full_text = "".join(e["delta"] for e in text_deltas)
+        assert "turquoise" in full_text.lower(), (
+            f"Expected context-aware reply mentioning turquoise, got: {full_text[:200]}"
+        )
+        done2 = [e for e in events2 if e.get("type") == "done"]
+        assert len(done2) == 1
+
+
+@pytest.mark.asyncio
 async def test_it8_abort_on_disconnect(app):
     """IT-8: client disconnect triggers abort — verified by aborting mid-stream
     and confirming pi reaches settled state."""

@@ -56,7 +56,7 @@ Build a web chat application with a Python backend (FastAPI) wrapping the **pi a
   - Tests: `test_messages.py` (IT-4: send message, verify SSE stream has >1 text_delta chunk before done, verify user + assistant messages in DB; IT-8: client disconnect triggers abort)
   - **Validation:** `uv run pytest -q` passes (hits real pi + Bedrock), `uv run ruff check .` clean
 
-- [ ] **M5: Message history + restart survival**
+- [x] **M5: Message history + restart survival**
   - `GET /api/conversations/{id}/messages` returns messages from DB, scoped by tenant
   - ProcessManager re-spawn path: when pi process is dead and conversation has `pi_session_path`, spawn with `--session <path>` to reload history
   - Tests: IT-5 (send messages, kill pi process, send again, verify context-aware reply), IT-6 (send messages, recreate app instance with same DB, verify messages listed, send new message, verify pi reloads session)
@@ -95,7 +95,7 @@ The ultimate gate is `make e2e` — a single command that runs the e2e test from
 
 ## Status
 
-M4 complete. Starting M5 next turn.
+M5 complete. Starting M6 next turn.
 
 ## Decisions
 
