@@ -47,6 +47,11 @@ in **`pi-notes.md`** at the workspace root — read it before writing any pi cod
    supported. Retry your request with the ID or ARN of an inference profile`. Verified
    working: `us.anthropic.claude-haiku-4-5-20251001-v1:0`.
 4. Region comes from ambient `AWS_REGION` / `AWS_DEFAULT_REGION` (`us-west-2` on this host).
+5. **How to assert "the agent has no tools" (vision.md Done criterion 6).** With `--no-tools`,
+   pi's system message contains a `tools` section whose literal body is `(none)`. This was
+   observed directly in a `--mode json` run: `"tools": "<tools>\n(none)\n\nIn addition to the
+   tools above, ..."`. Asserting on that section is a more direct check than inferring tool
+   availability from `get_state`. Either is acceptable; this one is cheaper and unambiguous.
 
 ## Prohibitions
 

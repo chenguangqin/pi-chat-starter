@@ -28,7 +28,7 @@ Build a web chat application with a Python backend (FastAPI) wrapping the **pi a
 - [ ] **M1: Project scaffold + database**
   - Initialize backend: `pyproject.toml` (FastAPI, SQLAlchemy, uvicorn, alembic, httpx, pytest, pytest-asyncio, ruff), `alembic.ini`, initial migration creating `conversations` and `messages` tables
   - Initialize frontend: `package.json`, Vite + React 18 + TypeScript + Tailwind CSS, `vite.config.ts` with `/api` proxy to `localhost:8000`
-  - Backend: `config.py` (env vars: `PI_MODEL`, `DATA_DIR`, `PI_IDLE_TIMEOUT_SECONDS`), `database.py` (async SQLAlchemy engine, WAL mode pragma, session factory), `models.py` (Conversation, Message ORM models), `app.py` (FastAPI factory with lifespan)
+  - Backend: `config.py` (env vars: `PI_MODEL`, `DATA_DIR`, `PI_IDLE_TIMEOUT_SECONDS`, `MAX_PI_PROCESSES` default 20), `database.py` (async SQLAlchemy engine, WAL mode pragma, session factory), `models.py` (Conversation, Message ORM models), `app.py` (FastAPI factory with lifespan)
   - `Makefile` with `make dev` (starts backend + frontend)
   - **Validation:** `uv run ruff check .` clean, `uv run pytest -q` passes (empty/trivial test), `npm run build` succeeds, `make dev` starts both servers (manual check: frontend serves, backend responds to a health endpoint)
 
@@ -42,9 +42,12 @@ Build a web chat application with a Python backend (FastAPI) wrapping the **pi a
 - [ ] **M3: Pi process lifecycle**
   - `pi_process.py`: `PiProcess` class — async subprocess via `asyncio.create_subprocess_exec`, JSONL framing (split on `b"\n"` only), named methods only (`send_prompt`, `send_get_state`, `abort`, `shutdown`), state tracking (starting/ready/streaming/idle/dead), stdout reader coroutine with per-line error handling, `is_streaming` flag
   - `process_manager.py`: `ProcessManager` — maps `conversation_id → PiProcess`, `get_or_create(conversation)` that spawns with correct flags (`--mode rpc --no-tools --no-context-files --provider amazon-bedrock --model $PI_MODEL --session-dir <tenant_dir>`), saves `pi_session_path` from `get_state` to conversation record, re-spawns with `--session <saved_path>`, idle timeout cleanup task, `shutdown_all()`
+  - `ProcessManager` spawns each process with **cwd `<DATA_DIR>/tenants/<tid>/workdirs/<cid>/`**, created on demand (idempotent) and removed when the conversation is deleted — NOT `/tmp` (see `architecture.md` → Reviewer Decisions)
+  - `ProcessManager` enforces `MAX_PI_PROCESSES` (default 20): reap idle-timed-out processes first, then refuse with **HTTP 503** rather than spawning past the cap. No queuing, no eviction of a live process.
+  - `AWS_PROFILE` must be set explicitly in the child environment (see `tech-env.md`) or pi will not expose the Bedrock provider
   - App factory wires ProcessManager into lifespan (create on startup, shutdown on teardown)
   - Pi version check on startup (`pi --version` must be `1.0.2`)
-  - Tests: `test_pi_process.py` (IT-3: spawn pi, get_state, send prompt, receive events through agent_settled, verify >1 text_delta; IT-10: get_state confirms no tools)
+  - Tests: `test_pi_process.py` (IT-3: spawn pi, get_state, send prompt, receive events through agent_settled, verify >1 text_delta; IT-10: no tools enabled; plus: the cap yields 503, and the workdir is created under the tenant data root)
   - **Validation:** `uv run pytest -q` passes (tests hit real pi + real Bedrock), `uv run ruff check .` clean
 
 - [ ] **M4: Message send + streaming endpoint**
@@ -102,11 +105,13 @@ Not started. Entering BUILD phase.
 | D2 | Pi process idle timeout: 15 min default (via `PI_IDLE_TIMEOUT_SECONDS`) | Balances memory vs. latency. Configurable. |
 | D3 | Identity stub via `X-Tenant-ID` / `X-User-ID` headers | Simplest replaceable stub. One file to swap for real auth. |
 | D4 | POST returns SSE stream (not POST + separate GET) | Eliminates race between message creation and stream subscription. |
-| D5 | Pi cwd: `/tmp/pi-<conversation_id>` | Avoids pi discovering workspace config. Tools are disabled, so cwd is irrelevant for execution. |
+| D5 | Pi cwd: `<DATA_DIR>/tenants/<tid>/workdirs/<cid>/` (**reviewer override** of the earlier `/tmp/pi-<cid>`) | `/tmp` is cleaned by tmpfiles.d / reboots and the failure (pi starting in a vanished cwd) is obscure. Keeps all tenant state on one path prefix. `-nc` still disables context-file discovery. |
 | D6 | Session reload via saved `pi_session_path` + `--session <path>` | Deterministic across re-spawns regardless of cwd. |
 | D7 | PiProcess exposes only named methods, not generic send | Prevents accidental `bash` command construction. |
 | D8 | 409 Conflict on concurrent prompt to same conversation | Simpler than pi's `streamingBehavior` queuing. Fail-fast for the user. |
 | D9 | Conversations table uses TEXT PRIMARY KEY (UUID) | No auto-increment; UUIDs are generated in Python. Simpler for a multi-process system. |
+| D10 | No auto-generated conversation titles in v1 (**reviewer decision**) | Default title `"New conversation"`; rename endpoint is the only path. Avoids a second LLM call. Pure increment, deferred. |
+| D11 | `MAX_PI_PROCESSES` default 20, over-cap requests get HTTP 503 (**reviewer decision**) | Prevents linear memory growth into OOM. Reap idle-timed-out processes before refusing. No queuing, no eviction. |
 
 ## Open Questions
 

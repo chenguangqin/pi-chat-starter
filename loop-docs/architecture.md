@@ -402,10 +402,35 @@ common_agent/                       ← workspace root
 
 ---
 
-## Questions for Reviewer
+## Reviewer Decisions — RESOLVED, BINDING
 
-- **Conversation cwd for pi processes:** The current plan uses `/tmp/pi-<conversation_id>` as the working directory for each pi process (to avoid pi discovering project-level `.pi/` config). An alternative is a stable directory under the data root (`<data_dir>/tenants/<tid>/workdirs/<cid>/`). The stable directory adds directory management but avoids `/tmp` cleanup surprises on long-running systems. Recommendation: use `/tmp` for local-only; it's simpler and tools are disabled anyway.
+A human reviewed this plan on 2026-10-05 and answered all three open questions. These are
+final. Do NOT re-open, re-litigate, or "improve" them during BUILD. Where a decision
+contradicts an earlier recommendation in this document, the decision below wins.
 
-- **Auto-title generation:** The vision doesn't mention auto-generating conversation titles from the first message (the way ChatGPT does). The plan defaults to "New conversation" and lets the user rename. If auto-title is desired, it would require a second LLM call (or parsing the first assistant response), adding complexity. Recommendation: skip for v1; the rename endpoint exists for manual titling.
+- **Pi process cwd — DECIDED: a stable per-conversation directory, NOT `/tmp`.**
+  Each pi process runs with cwd `<DATA_DIR>/tenants/<tenant_id>/workdirs/<conversation_id>/`.
+  The ProcessManager creates it on demand (`mkdir -p` semantics, idempotent) before spawning,
+  and removes it when the conversation is deleted.
+  This **overrides** the original `/tmp/pi-<conversation_id>` recommendation. Rationale: `/tmp`
+  is cleaned by tmpfiles.d, reboots, and container restarts, and the resulting symptom — pi
+  starting in a directory that no longer exists — is an obscure failure to diagnose. The
+  simplification `/tmp` bought was a few lines of directory creation. Keeping the workdir
+  under the same per-tenant prefix as the session dir also means all tenant state lives on one
+  path, reinforcing the isolation story instead of introducing a second location scheme.
+  The directory is expected to stay empty (tools are disabled). It must never contain a `.pi/`
+  directory or `AGENTS.md`; the `-nc` / `--no-context-files` launch flag already disables that
+  discovery regardless, and must be kept.
 
-- **Pi process count limit:** The plan has no hard cap on concurrent pi processes. If many conversations are active simultaneously, memory grows linearly. A configurable `MAX_PI_PROCESSES` with a 503 when exceeded would add a safety valve. Recommendation: add the config knob with a generous default (e.g. 20) — it's a few lines and prevents runaway memory.
+- **Auto-title generation — DECIDED: not in v1.** Conversations are created with the title
+  `"New conversation"`. The rename endpoint is the only way a title changes. Do not add a
+  second LLM call, do not derive a title from the first message or the first assistant
+  response. Deferred deliberately; it is pure increment on top of a working shell.
+
+- **Concurrent pi process cap — DECIDED: implement `MAX_PI_PROCESSES`, default 20.**
+  The ProcessManager refuses to spawn beyond the cap and the request fails with **HTTP 503**
+  and a clear error body; it does not queue and does not evict an active process. Configurable
+  via the `MAX_PI_PROCESSES` env var alongside the other settings in `config.py`. Before
+  refusing, the manager should first reap any processes already past their idle timeout — a
+  request must not be rejected because of processes that were due for cleanup anyway. Add
+  coverage that the cap triggers a 503 rather than an unbounded spawn.
