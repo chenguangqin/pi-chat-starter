@@ -72,7 +72,7 @@ Build a web chat application with a Python backend (FastAPI) wrapping the **pi a
   - Unit test: `useStream.test.ts` (IT-11: mock SSE, verify delta accumulation and error handling)
   - **Validation:** `npm run build` succeeds (clean typecheck), `npm run lint` clean, `npm run test` passes, dev server manual check (conversations list, send message, see streaming reply, switch conversations)
 
-- [ ] **M7: Cross-tenant isolation + no-tools assertion**
+- [x] **M7: Cross-tenant isolation + no-tools assertion**
   - Dedicated test `test_conversations.py` additions or new file: IT-7 — for EVERY endpoint that accepts a conversation or message id, attempt access with wrong tenant's identity headers → assert 404 and empty/opaque response body
   - IT-10 assertion (if not already covered in M3): verify pi process reports no enabled tools
   - **Validation:** `uv run pytest -q` passes, every endpoint covered by cross-tenant test
@@ -95,7 +95,7 @@ The ultimate gate is `make e2e` — a single command that runs the e2e test from
 
 ## Status
 
-M6 complete. Starting M7 next turn.
+M7 complete. Starting M8 next turn.
 
 ## Decisions
 
