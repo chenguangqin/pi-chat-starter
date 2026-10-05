@@ -5,8 +5,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from auth import IdentityMiddleware
 from config import Settings
 from database import create_engine, create_session_factory, run_migrations
+from routes.conversations import router as conversations_router
 
 
 @asynccontextmanager
@@ -32,6 +34,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="common_agent", lifespan=lifespan)
     app.state.settings = settings
+
+    app.add_middleware(IdentityMiddleware)
+    app.include_router(conversations_router)
 
     @app.get("/api/health")
     async def health():

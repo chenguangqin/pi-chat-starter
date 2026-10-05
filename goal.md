@@ -32,7 +32,7 @@ Build a web chat application with a Python backend (FastAPI) wrapping the **pi a
   - `Makefile` with `make dev` (starts backend + frontend)
   - **Validation:** `uv run ruff check .` clean, `uv run pytest -q` passes (empty/trivial test), `npm run build` succeeds, `make dev` starts both servers (manual check: frontend serves, backend responds to a health endpoint)
 
-- [ ] **M2: Identity stub + conversation CRUD with tenant isolation**
+- [x] **M2: Identity stub + conversation CRUD with tenant isolation**
   - `auth.py`: middleware reads `X-Tenant-ID` and `X-User-ID` headers → `Identity` on request state. Missing/empty → 401.
   - `repositories.py`: `ConversationRepository` with `list`, `create`, `get_by_id`, `rename`, `delete` — every method requires `tenant_id`, every query has `WHERE tenant_id = :tid`. `MessageRepository` with `list_for_conversation`, `create` — joins through Conversation for tenant check.
   - `routes/conversations.py`: all 6 endpoints from the API surface in `architecture.md`
@@ -95,7 +95,7 @@ The ultimate gate is `make e2e` — a single command that runs the e2e test from
 
 ## Status
 
-M1 complete. Starting M2 next turn.
+M2 complete. Starting M3 next turn.
 
 ## Decisions
 
