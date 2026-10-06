@@ -12,7 +12,7 @@ from auth import Identity, get_identity
 from pi_process import PiProcess
 from process_manager import CapacityError
 from repositories import ConversationRepository, MessageRepository
-from sse import done_event, text_delta_event
+from sse import done_event, status_event, text_delta_event
 
 logger = logging.getLogger(__name__)
 
@@ -76,10 +76,23 @@ async def send_message(
 
                 if etype == "message_update":
                     ame = event.get("assistantMessageEvent", {})
-                    if ame.get("type") == "text_delta":
+                    ame_type = ame.get("type")
+
+                    if ame_type == "text_delta":
                         delta = ame.get("delta", "")
                         accumulated_text.append(delta)
                         yield text_delta_event(delta)
+
+                    # The model reasons before answering, and that phase emits only
+                    # `thinking_delta` events — measured at up to 218 of them over 7.4s
+                    # with no text at all. Those deltas are deliberately not forwarded
+                    # (reasoning is not part of the reply and is not persisted), but the
+                    # client needs to know the agent is working, or it shows an empty
+                    # bubble for the whole reasoning phase.
+                    elif ame_type == "thinking_start":
+                        yield status_event("thinking")
+                    elif ame_type == "text_start":
+                        yield status_event("responding")
 
                 elif etype == "message_end":
                     full_text = "".join(accumulated_text)

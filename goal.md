@@ -70,7 +70,7 @@ Build a web chat application with a Python backend (FastAPI) wrapping the **pi a
   - `MessageThread.tsx`: renders message history, streaming assistant text, error messages, auto-scroll to bottom, markdown rendering for assistant messages
   - `MessageInput.tsx`: auto-growing textarea, Enter to send / Shift+Enter for newline, disabled while streaming, stop button during streaming
   - Unit test: `useStream.test.ts` (IT-11: mock SSE, verify delta accumulation and error handling)
-  - **Validation:** `npm run build` succeeds (clean typecheck), `npm run lint` clean, `npm run test` passes, dev server manual check (conversations list, send message, see streaming reply, switch conversations)
+  - **Validation:** `npm run build` succeeds, `npm run lint` (eslint) and `npm run typecheck` (tsc) clean, `npm run test` passes, dev server manual check (conversations list, send message, see streaming reply, switch conversations)
 
 - [x] **M7: Cross-tenant isolation + no-tools assertion**
   - Dedicated test `test_conversations.py` additions or new file: IT-7 — for EVERY endpoint that accepts a conversation or message id, attempt access with wrong tenant's identity headers → assert 404 and empty/opaque response body
@@ -86,7 +86,7 @@ Build a web chat application with a Python backend (FastAPI) wrapping the **pi a
     5. Asserts every cross-tenant access attempt is refused (all endpoints, both directions)
     6. Asserts agent has no file or shell tools (get_state check)
   - `README.md`: operator docs — prerequisites (Python 3.11+, Node 22+, pi 1.0.2, AWS credentials), setup steps, `make dev`, `make test`, `make e2e`, where the auth seam is and how to replace it, where to add agent tools later
-  - Final validation pass: `uv run ruff check .`, `uv run mypy .` (if mypy config established), `npm run build`, `npm run lint`, `npm run test`
+  - Final validation pass: `uv run ruff check .`, `uv run mypy .` (if mypy config established), `npm run build`, `npm run lint`, `npm run typecheck`, `npm run test`
   - **Validation:** `make e2e` passes against real Bedrock. All lint/type checks clean.
 
 ## Validation (end-to-end)
@@ -95,7 +95,32 @@ The ultimate gate is `make e2e` — a single command that runs the e2e test from
 
 ## Status
 
-M8 complete. All milestones checked. BUILD phase done — ready for VERIFY.
+M8 complete. All milestones checked. BUILD + VERIFY done; the items below were found and
+fixed during post-VERIFY review (2026-10-06).
+
+### Post-VERIFY fixes
+
+- **IT-9 (concurrent streaming) added and passing.** The original e2e test exercised the
+  two tenants sequentially, so it could not detect serialization. Measured through the
+  real server: two tenants overlap by +4.2s with ~5.5s of delta spread each. There is no
+  backend serialization defect — an earlier apparent one was a test artifact (see D12).
+- **`thinking` / `responding` status events.** The model reasons before answering (up to
+  218 thinking deltas over 7.4s) and only `text_delta` was forwarded, so the UI showed an
+  empty bubble for the whole reasoning phase. The backend now emits a `status` event on
+  `thinking_start` / `text_start`; thinking *content* is still never forwarded or stored.
+- **Dropped tokens in the frontend SSE reader (data loss).** `useStream` parsed each
+  network chunk independently, so any SSE frame split across a chunk boundary was
+  discarded as malformed JSON. With ~240 deltas per reply this happened routinely; a
+  regression test reproduces it (pre-fix: 1 of 3 deltas survived).
+- **`live_server` test fixture.** httpx's `ASGITransport` buffers the whole response
+  body, so no test using the `client` fixture can prove incremental streaming or
+  concurrency. Timing-sensitive tests now run over real TCP.
+- **ESLint configured.** `npm run lint` was `tsc --noEmit`, i.e. not linting at all. Now
+  `lint` = eslint (flat config) and `typecheck` = tsc, both wired into `make lint`.
+- **Serving behind a path-prefix proxy.** `VITE_ALLOWED_HOSTS` / `VITE_BASE_PATH` plus a
+  middleware that restores the prefix when the upstream proxy strips it. Dev-only
+  convenience for remote viewing; no effect on local use or on the deploy story (still
+  none).
 
 ## Decisions
 
@@ -112,6 +137,8 @@ M8 complete. All milestones checked. BUILD phase done — ready for VERIFY.
 | D9 | Conversations table uses TEXT PRIMARY KEY (UUID) | No auto-increment; UUIDs are generated in Python. Simpler for a multi-process system. |
 | D10 | No auto-generated conversation titles in v1 (**reviewer decision**) | Default title `"New conversation"`; rename endpoint is the only path. Avoids a second LLM call. Pure increment, deferred. |
 | D11 | `MAX_PI_PROCESSES` default 20, over-cap requests get HTTP 503 (**reviewer decision**) | Prevents linear memory growth into OOM. Reap idle-timed-out processes before refusing. No queuing, no eviction. |
+| D12 | Streaming/concurrency tests must use a long-answer prompt with a trivially-placed marker | A prompt the model has to reason about puts all elapsed time in the thinking phase and leaves a short answer that Bedrock ships in one burst, collapsing `first_delta` onto `last_delta`. The overlap check then compares two generation *end times* and fails on any backend. Measured: "begin every sentence with ALPHA" → 218 thinking deltas / 50 text deltas in 0.03s; "start with ALPHA, then a 400-word essay" → 20 thinking deltas / 238 text deltas over 5.6s. |
+| D13 | Thinking deltas are surfaced as a `status` event, never as content | The reasoning text is not part of the reply and must not be persisted or shown, but the client still needs to know the agent is working during a multi-second reasoning phase. |
 
 ## Open Questions
 

@@ -18,11 +18,18 @@ export interface Message {
   created_at: string;
 }
 
+// Prefix every request with the app's base path. `import.meta.env.BASE_URL` is "/" in
+// normal local use (so this is a no-op), but becomes e.g. "/proxy/5173/" when the app
+// is served under a path prefix by a reverse proxy. Vite rewrites asset URLs for the
+// base path automatically; fetch() URLs it does not, so they are prefixed here.
+const apiUrl = (path: string): string =>
+  `${import.meta.env.BASE_URL.replace(/\/$/, "")}${path}`;
+
 async function request<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(path, {
+  const res = await fetch(apiUrl(path), {
     ...init,
     headers: { ...HEADERS, ...init?.headers },
   });
@@ -74,7 +81,7 @@ export function sendMessageStream(
   content: string,
   signal?: AbortSignal,
 ): Promise<Response> {
-  return fetch(`/api/conversations/${conversationId}/messages`, {
+  return fetch(apiUrl(`/api/conversations/${conversationId}/messages`), {
     method: "POST",
     headers: HEADERS,
     body: JSON.stringify({ content }),

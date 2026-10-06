@@ -41,12 +41,24 @@ export default function App() {
     [activeId, loadMessages, loadConversations],
   );
 
-  const { streamedText, state, error, send, abort } =
+  const { streamedText, state, status, error, send, abort } =
     useStream(handleStreamDone);
   const isStreaming = state === "streaming";
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   useEffect(() => {
-    loadConversations();
+    // Fetch the conversation list on mount. `react-hooks/set-state-in-effect` flags this
+    // because `loadConversations` transitively calls setState, but it awaits the fetch
+    // first, so nothing is set synchronously here — this is the ordinary load-on-mount
+    // pattern. The catch is what matters: without it a backend that is down surfaces as
+    // an unhandled rejection and an empty sidebar with no explanation.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadConversations().catch((err: unknown) =>
+      setLoadError(
+        err instanceof Error ? err.message : "Could not load conversations",
+      ),
+    );
   }, [loadConversations]);
 
   const handleSelect = useCallback(
@@ -118,8 +130,9 @@ export default function App() {
             <MessageThread
               messages={messages}
               streamedText={streamedText}
+              status={status}
               isStreaming={isStreaming}
-              error={error}
+              error={error ?? loadError}
             />
             <MessageInput
               onSend={handleSend}

@@ -27,6 +27,7 @@ test: test-backend test-frontend
 lint:
 	cd $(BACKEND_DIR) && uv run ruff check .
 	cd $(FRONTEND_DIR) && npm run lint
+	cd $(FRONTEND_DIR) && npm run typecheck
 
 e2e:
 	cd $(BACKEND_DIR) && uv run pytest tests/e2e/ -q

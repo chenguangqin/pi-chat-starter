@@ -6,6 +6,7 @@ interface Props {
   messages: Message[];
   streamedText: string;
   isStreaming: boolean;
+  status: string | null;
   error: string | null;
 }
 
@@ -33,6 +34,20 @@ function AssistantBubble({ content }: { content: string }) {
   );
 }
 
+// Shown between sending and the first token. The model reasons before it answers —
+// several seconds with no text — so without this the thread looks frozen.
+function PendingBubble({ label }: { label: string }) {
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[80%] bg-white border border-gray-200 rounded-xl px-4 py-3">
+        <p className="text-[13px] leading-normal text-gray-500 animate-pulse">
+          {label}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ErrorBubble({ message }: { message: string }) {
   return (
     <div className="flex justify-start">
@@ -47,6 +62,7 @@ export default function MessageThread({
   messages,
   streamedText,
   isStreaming,
+  status,
   error,
 }: Props) {
   const endRef = useRef<HTMLDivElement>(null);
@@ -73,9 +89,14 @@ export default function MessageThread({
             <AssistantBubble key={msg.id} content={msg.content} />
           ),
         )}
-        {isStreaming && streamedText && (
-          <AssistantBubble content={streamedText} />
-        )}
+        {isStreaming &&
+          (streamedText ? (
+            <AssistantBubble content={streamedText} />
+          ) : (
+            <PendingBubble
+              label={status === "thinking" ? "Thinking…" : "Working…"}
+            />
+          ))}
         {error && <ErrorBubble message={error} />}
         <div ref={endRef} />
       </div>
